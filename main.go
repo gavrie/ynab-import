@@ -10,19 +10,21 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 )
 
 var fieldNames = map[string][]string{
-	"amount": {"סכום חיוב ₪", "סכוםהחיוב"},
-	"date":   {"תאריך עסקה", "תאריךהעסקה"},
+	"amount": {"סכום חיוב ₪", "סכוםהחיוב", "סכום החיוב בש''ח"},
+	"date":   {"תאריך עסקה", "תאריךהעסקה", "תאריך הקנייה"},
 	"payee":  {"שם בית העסק", "שםבית העסק"},
-	"memo":   {"הערות", "פירוט נוסף"},
+	"memo":   {"הערות", "פירוט נוסף", "מידע נוסף"},
 }
 
 var dateFormats = []string{
 	"2006-01-02T15:04:05",
 	"02/01/06",
+	"2006-01-02",
 }
 
 func parseDate(s string) (date time.Time, err error) {
@@ -86,9 +88,10 @@ func newTransaction(row Row) *transaction {
 	}
 
 	stringAmount := getCell(row, "amount")
+	stringAmount = strings.Replace(stringAmount, ",", "", -1)
 	amount, err := strconv.ParseFloat(stringAmount, 64)
 	if err != nil {
-		log.Fatal("Non-numeric value encountered", stringAmount)
+		log.Fatal("Non-numeric value encountered ", stringAmount)
 	}
 
 	var outflow, inflow string
@@ -101,7 +104,7 @@ func newTransaction(row Row) *transaction {
 	stringDate := getCell(row, "date")
 	date, err := parseDate(stringDate)
 	if err != nil {
-		log.Fatal("Invalid date encountered", stringDate)
+		log.Fatal("Invalid date encountered ", stringDate)
 	}
 
 	return &transaction{
@@ -188,7 +191,8 @@ func exportRows(rows []Row, out io.Writer) error {
 func decodeFile(filename string) (rows []Row, err error) {
 	decoders := []func(io.Reader) ([]Row, error){
 		decodeRowsXml,
-		decodeRowsHtml,
+		decodeRowsHtmlCal,
+		decodeRowsHtmlMizrahi,
 	}
 
 	for _, decode := range decoders {
@@ -199,13 +203,12 @@ func decodeFile(filename string) (rows []Row, err error) {
 		defer f.Close()
 
 		rows, err = decode(f)
-		if err == nil {
+		if err == nil && len(rows) > 0 {
 			return rows, nil
 		}
 	}
 
 	return nil, err
-
 }
 
 func basename(filename string) string {

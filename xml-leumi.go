@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/xml"
 	"io"
+	"log"
 )
 
 /*
@@ -75,6 +76,8 @@ type xmlCell struct {
 }
 
 func decodeRowsXml(r io.Reader) (rows []Row, err error) {
+	log.Printf("xml")
+
 	d := xml.NewDecoder(r)
 	doc := &Document{}
 
