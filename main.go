@@ -3,9 +3,12 @@ package main
 import (
 	"encoding/csv"
 	"errors"
+	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"os"
+	"path/filepath"
 	"strconv"
 	"time"
 )
@@ -110,7 +113,7 @@ func newTransaction(row Row) *transaction {
 	}
 }
 
-func processRows(rows []Row) error {
+func exportRows(rows []Row, out io.Writer) error {
 	if len(rows) < 2 {
 		return errors.New("No transactions")
 	}
@@ -119,7 +122,7 @@ func processRows(rows []Row) error {
 
 	cellIndexByName = newCellIndexByName(header)
 
-	w := csv.NewWriter(os.Stdout)
+	w := csv.NewWriter(out)
 	w.Write([]string{"Date", "Payee", "Category", "Memo", "Outflow", "Inflow"})
 
 	for _, row := range rows {
@@ -167,19 +170,37 @@ func decodeFile(filename string) (rows []Row, err error) {
 
 }
 
+func basename(filename string) string {
+	return filename[:len(filename)-len(filepath.Ext(filename))]
+}
+
 func decodeAll() error {
-	files := []string{
-		"6025.xml",
-		"4105.html",
+	inputDir := "data/input"
+	outputDir := "data/output"
+
+	fileInfos, err := ioutil.ReadDir(inputDir)
+	if err != nil {
+		return err
 	}
 
-	for _, filename := range files {
-		rows, err := decodeFile(filename)
+	for _, fi := range fileInfos {
+		filename := fi.Name()
+
+		inFilename := filepath.Join(inputDir, filename)
+		outFilename := filepath.Join(outputDir, fmt.Sprintf("%v.%v", basename(filename), "csv"))
+
+		log.Printf("Processing %v: %v -> %v", filename, inFilename, outFilename)
+
+		rows, err := decodeFile(inFilename)
 		if err != nil {
 			return err
 		}
 
-		err = processRows(rows)
+		outFile, err := os.Create(outFilename)
+		if err != nil {
+			return err
+		}
+		err = exportRows(rows, outFile)
 		if err != nil {
 			return err
 		}
