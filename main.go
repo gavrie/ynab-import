@@ -113,21 +113,59 @@ func newTransaction(row Row) *transaction {
 	}
 }
 
+func fixDates(transactions []*transaction) {
+	const maxPeriod = 45 * 24 * time.Hour
+
+	firstDate := transactions[0].date
+	lastDate := transactions[len(transactions)-1].date
+
+	period := lastDate.Sub(firstDate)
+	if period <= maxPeriod {
+		return
+	}
+
+	log.Printf("Period is larger than a month (%v to %v)", firstDate, lastDate)
+
+	midDate := transactions[len(transactions)/2].date
+	adjustedDate := time.Date(midDate.Year(), midDate.Month(), 20, 0, 0, 0, 0, midDate.Location())
+
+	// Adjust
+	log.Printf("Middle date: %v", midDate)
+	log.Printf("Adjusted date: %v", adjustedDate)
+
+	for _, t := range transactions {
+		if lastDate.Sub(t.date) > maxPeriod {
+			log.Printf("Adjusting: %v -> %v", t.date, adjustedDate)
+			t.date = adjustedDate
+		}
+	}
+}
+
 func exportRows(rows []Row, out io.Writer) error {
 	if len(rows) < 2 {
 		return errors.New("No transactions")
 	}
 
 	header, rows := rows[0], rows[1:]
-
 	cellIndexByName = newCellIndexByName(header)
+
+	// Create transactions
+
+	var transactions []*transaction
+	for _, row := range rows {
+		t := newTransaction(row)
+		transactions = append(transactions, t)
+	}
+
+	// Fix up transactions
+	fixDates(transactions)
+
+	// Export transactions
 
 	w := csv.NewWriter(out)
 	w.Write([]string{"Date", "Payee", "Category", "Memo", "Outflow", "Inflow"})
 
-	for _, row := range rows {
-		t := newTransaction(row)
-
+	for _, t := range transactions {
 		w.Write([]string{
 			t.date.Format("02/01/2006"),
 			t.payee,
