@@ -14,75 +14,31 @@ import (
 /*
 <Row>
 	<Cell ss:StyleID="Header">
-	<Data ss:Type="String">תאריך עסקה</Data> 0
+	<Data ss:Type="String">תאריך עסקה</Data>
 	</Cell>
 	<Cell ss:StyleID="Header">
-	<Data ss:Type="String">תאריך חיוב</Data> 1
+	<Data ss:Type="String">תאריך חיוב</Data>
 	</Cell>
 	<Cell ss:StyleID="Header">
-	<Data ss:Type="String">שם בית העסק</Data> 2
+	<Data ss:Type="String">שם בית העסק</Data>
 	</Cell>
 	<Cell ss:StyleID="Header">
-	<Data ss:Type="String">סוג עסקה</Data> 3
+	<Data ss:Type="String">סוג עסקה</Data>
 	</Cell>
 	<Cell ss:StyleID="Header">
-	<Data ss:Type="String">מטבע עסקה</Data> 4
+	<Data ss:Type="String">מטבע עסקה</Data>
 	</Cell>
 	<Cell ss:StyleID="Header">
-	<Data ss:Type="String">סכום עסקה</Data> 5
+	<Data ss:Type="String">סכום עסקה</Data>
 	</Cell>
 	<Cell ss:StyleID="Header">
-	<Data ss:Type="String">סכום חיוב ₪</Data> 6
+	<Data ss:Type="String">סכום חיוב ₪</Data>
 	</Cell>
 	<Cell ss:StyleID="Header">
-	<Data ss:Type="String">הערות</Data> 7
+	<Data ss:Type="String">הערות</Data>
 	</Cell>
 </Row>
-*/
 
-type transaction struct {
-	date     time.Time
-	payee    string
-	category string
-	memo     string
-	outflow  string
-	inflow   string
-}
-
-func newTransaction(row *Row) *transaction {
-	if len(row.Cells) != 8 {
-		log.Fatal("Unexpected row length")
-	}
-
-	stringAmount := row.Cells[6].Data
-	amount, err := strconv.ParseFloat(stringAmount, 64)
-	if err != nil {
-		log.Fatal("Non-numeric value encountered", stringAmount)
-	}
-
-	var outflow, inflow string
-	if amount > 0 {
-		outflow = stringAmount
-	} else {
-		inflow = stringAmount
-	}
-
-	stringDate := row.Cells[0].Data
-	date, err := time.Parse("2006-01-02T15:04:05", stringDate)
-	if err != nil {
-		log.Fatal("Invalid date encountered", stringDate)
-	}
-
-	return &transaction{
-		date:    date,
-		payee:   row.Cells[2].Data,
-		memo:    row.Cells[7].Data,
-		outflow: outflow,
-		inflow:  inflow,
-	}
-}
-
-/*
 <Row>
 	<Cell>
 	<Data ss:Type="DateTime">2014-09-30T00:00:00</Data>
@@ -124,12 +80,84 @@ type Cell struct {
 	Data string
 }
 
-func main() {
-	err := process()
+func getCellNames(row Row) map[string]int {
+	cellsByName := map[string]int{}
 
-	if err != nil {
-		log.Fatal(err)
+	for i, cell := range row.Cells {
+		cellsByName[cell.Data] = i
 	}
+	return cellsByName
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+type transaction struct {
+	date     time.Time
+	payee    string
+	category string
+	memo     string
+	outflow  string
+	inflow   string
+}
+
+func newTransaction(cellsByName map[string]int, row *Row) *transaction {
+	if len(row.Cells) != len(cellsByName) {
+		log.Fatal("Unexpected row length")
+	}
+
+	getCell := func(name string) string {
+		i, ok := cellsByName[name]
+		if !ok {
+			log.Fatal("No cell found with name '%v'", name)
+		}
+		return row.Cells[i].Data
+	}
+
+	stringAmount := getCell("סכום חיוב ₪")
+	amount, err := strconv.ParseFloat(stringAmount, 64)
+	if err != nil {
+		log.Fatal("Non-numeric value encountered", stringAmount)
+	}
+
+	var outflow, inflow string
+	if amount > 0 {
+		outflow = stringAmount
+	} else {
+		inflow = stringAmount
+	}
+
+	stringDate := getCell("תאריך עסקה")
+	date, err := time.Parse("2006-01-02T15:04:05", stringDate)
+	if err != nil {
+		log.Fatal("Invalid date encountered", stringDate)
+	}
+
+	return &transaction{
+		date:    date,
+		payee:   getCell("שם בית העסק"),
+		memo:    getCell("הערות"),
+		outflow: outflow,
+		inflow:  inflow,
+	}
+}
+
+func decodeRows() ([]Row, error) {
+	d := xml.NewDecoder(os.Stdin)
+	doc := &Document{}
+
+	for {
+		err := d.Decode(doc)
+
+		if err == io.EOF {
+			break
+		}
+
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return doc.Rows, nil
 }
 
 func process() error {
@@ -142,13 +170,15 @@ func process() error {
 		return errors.New("No transactions")
 	}
 
-	rows = rows[1:] // Skip header
+	header, rows := rows[0], rows[1:]
+
+	cellsByName := getCellNames(header)
 
 	w := csv.NewWriter(os.Stdout)
 	w.Write([]string{"Date", "Payee", "Category", "Memo", "Outflow", "Inflow"})
 
 	for _, row := range rows {
-		t := newTransaction(&row)
+		t := newTransaction(cellsByName, &row)
 
 		w.Write([]string{
 			t.date.Format("02/01/2006"),
@@ -169,21 +199,10 @@ func process() error {
 	return nil
 }
 
-func decodeRows() ([]Row, error) {
-	d := xml.NewDecoder(os.Stdin)
-	doc := &Document{}
+func main() {
+	err := process()
 
-	for {
-		err := d.Decode(doc)
-
-		if err == io.EOF {
-			break
-		}
-
-		if err != nil {
-			return nil, err
-		}
+	if err != nil {
+		log.Fatal(err)
 	}
-
-	return doc.Rows, nil
 }
