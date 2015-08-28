@@ -93,9 +93,9 @@ func newTransaction(row Row) *transaction {
 
 	var outflow, inflow string
 	if amount > 0 {
-		outflow = stringAmount
+		outflow = fmt.Sprintf("%v", amount)
 	} else {
-		inflow = stringAmount
+		inflow = fmt.Sprintf("%v", -amount)
 	}
 
 	stringDate := getCell(row, "date")
