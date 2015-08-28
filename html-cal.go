@@ -4,9 +4,8 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"io"
-	"log"
-	"os"
 	"strings"
 	"unicode/utf16"
 
@@ -39,32 +38,53 @@ func readUtf16(r io.Reader) (string, error) {
 	return utf8, nil
 }
 
-func decodeRowsHtml() error {
-	s, err := readUtf16(os.Stdin)
+func decodeRowsHtml(r io.Reader) (rows []Row, err error) {
+	s, err := readUtf16(r)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(s))
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	doc.Find("#tdCalGrid").Each(func(i int, s *goquery.Selection) {
-		s.Find("tr").Each(func(i int, s *goquery.Selection) {
-			if i == 0 {
-				log.Println("Header:", i, s)
+		s.Find("thead").Each(func(i int, s *goquery.Selection) {
+			s.Find("tr").Each(func(i int, s *goquery.Selection) {
+				var row Row
 				s.Find("th").Each(func(i int, s *goquery.Selection) {
-					log.Printf("Field: %v [%v]", s.Text(), i)
+					value := s.Text()
+					if value == "" {
+						value = fmt.Sprintf("field_%v", i)
+					}
+					// log.Printf("Field: %v [%v]", value, i)
+					row = append(row, value)
 				})
-				return
-			}
-			log.Println("Row:", i, s)
-			s.Find("td").Each(func(i int, s *goquery.Selection) {
-				log.Printf("Field: %v [%v]", s.Text(), i)
+				// log.Print(row)
+				rows = append(rows, row)
+			})
+		})
+
+		s.Find("tbody").Each(func(i int, s *goquery.Selection) {
+			done := false
+
+			s.Find("tr").Each(func(i int, s *goquery.Selection) {
+				var row Row
+				s.Find("td").Each(func(i int, s *goquery.Selection) {
+					if s.HasClass("footer_cell_total") {
+						done = true
+					}
+					value := strings.TrimSpace(s.Text())
+					row = append(row, value)
+				})
+				if !done {
+					// log.Print(row)
+					rows = append(rows, row)
+				}
 			})
 		})
 	})
 
-	return nil
+	return rows, nil
 }

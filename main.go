@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/csv"
 	"errors"
+	"io"
 	"log"
 	"os"
 	"strconv"
@@ -75,6 +76,8 @@ type transaction struct {
 }
 
 func newTransaction(row Row) *transaction {
+	// log.Printf("cellIndexByName: %#v", cellIndexByName)
+
 	if len(row) != len(cellIndexByName) {
 		log.Fatal("Unexpected row length")
 	}
@@ -141,14 +144,52 @@ func processRows(rows []Row) error {
 	return nil
 }
 
-func main() {
-	rows, err := decodeRowsXml()
-	// rows, err := decodeRowsHtml()
-	if err != nil {
-		log.Fatal(err)
+func decodeFile(filename string) (rows []Row, err error) {
+	decoders := []func(io.Reader) ([]Row, error){
+		decodeRowsXml,
+		decodeRowsHtml,
 	}
 
-	err = processRows(rows)
+	for _, decode := range decoders {
+		f, err := os.Open(filename)
+		if err != nil {
+			return nil, err
+		}
+		defer f.Close()
+
+		rows, err = decode(f)
+		if err == nil {
+			return rows, nil
+		}
+	}
+
+	return nil, err
+
+}
+
+func decodeAll() error {
+	files := []string{
+		"6025.xml",
+		"4105.html",
+	}
+
+	for _, filename := range files {
+		rows, err := decodeFile(filename)
+		if err != nil {
+			return err
+		}
+
+		err = processRows(rows)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func main() {
+	err := decodeAll()
 	if err != nil {
 		log.Fatal(err)
 	}

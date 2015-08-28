@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/xml"
 	"io"
-	"os"
 )
 
 /*
@@ -75,8 +74,8 @@ type xmlCell struct {
 	Data string
 }
 
-func decodeRowsXml() (rows []Row, err error) {
-	d := xml.NewDecoder(os.Stdin)
+func decodeRowsXml(r io.Reader) (rows []Row, err error) {
+	d := xml.NewDecoder(r)
 	doc := &Document{}
 
 	for {
@@ -92,7 +91,7 @@ func decodeRowsXml() (rows []Row, err error) {
 	}
 
 	for _, xmlRow := range doc.Rows {
-		row := Row{}
+		var row Row
 		for _, cell := range xmlRow.Cells {
 			row = append(row, cell.Data)
 		}
