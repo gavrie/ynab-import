@@ -15,16 +15,17 @@ import (
 )
 
 var fieldNames = map[string][]string{
-	"amount": {"סכום חיוב ₪", "סכוםהחיוב", "סכום החיוב בש''ח"},
-	"date":   {"תאריך עסקה", "תאריךהעסקה", "תאריך הקנייה"},
-	"payee":  {"שם בית העסק", "שםבית העסק"},
-	"memo":   {"הערות", "פירוט נוסף", "מידע נוסף"},
+	"amount": {"סכום חיוב ₪", "סכוםהחיוב", "סכום החיוב בש''ח", "סכום לחיוב"},
+	"date":   {"תאריך עסקה", "תאריךהעסקה", "תאריך הקנייה", "תאריך רכישה"},
+	"payee":  {"שם בית העסק", "שםבית העסק", "שם בית עסק"},
+	"memo":   {"הערות", "פירוט נוסף", "מידע נוסף", "פרוט נוסף"},
 }
 
 var dateFormats = []string{
 	"2006-01-02T15:04:05",
 	"02/01/06",
 	"2006-01-02",
+	"02/01/2006",
 }
 
 func parseDate(s string) (date time.Time, err error) {
@@ -193,6 +194,7 @@ func decodeFile(filename string) (rows []Row, err error) {
 		decodeRowsXml,
 		decodeRowsHtmlCal,
 		decodeRowsHtmlMizrahi,
+		decodeRowsHtmlIsracard,
 	}
 
 	for _, decode := range decoders {
