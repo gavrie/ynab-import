@@ -15,10 +15,12 @@ import (
 )
 
 var fieldNames = map[string][]string{
-	"amount": {"סכום חיוב ₪", "סכוםהחיוב", "סכום החיוב בש''ח", "סכום לחיוב"},
-	"date":   {"תאריך עסקה", "תאריךהעסקה", "תאריך הקנייה", "תאריך רכישה"},
-	"payee":  {"שם בית העסק", "שםבית העסק", "שם בית עסק"},
-	"memo":   {"הערות", "פירוט נוסף", "מידע נוסף", "פרוט נוסף"},
+	"amount":  {"סכום חיוב ₪", "סכוםהחיוב", "סכום החיוב בש''ח", "סכום לחיוב"},
+	"inflow":  {"זכות"},
+	"outflow": {"חובה"},
+	"date":    {"תאריך עסקה", "תאריךהעסקה", "תאריך הקנייה", "תאריך רכישה", "תאריך"},
+	"payee":   {"שם בית העסק", "שםבית העסק", "שם בית עסק", "סוג תנועה"},
+	"memo":    {"הערות", "פירוט נוסף", "מידע נוסף", "פרוט נוסף", "אסמכתא"},
 }
 
 var dateFormats = []string{
@@ -54,20 +56,24 @@ func newCellIndexByName(row Row) map[string]int {
 	return cellIndexByName
 }
 
-func getCell(row Row, field string) string {
+var ErrNoSuchCell = errors.New("No such cell")
+
+func getCell(row Row, field string) (string, error) {
 	names, ok := fieldNames[field]
 	if !ok {
-		log.Fatal("No cell names found for field '%v'", field)
+		err := fmt.Errorf("No cell names found for field '%v'", field)
+		log.Panic(err)
+		return "", err
 	}
 
 	for _, name := range names {
 		i, ok := cellIndexByName[name]
 		if ok {
-			return row[i]
+			return row[i], nil
 		}
 	}
-	log.Fatal("No cell found matching field '%v'", field)
-	return "<invalid>"
+	// log.Printf("No cell found matching field '%v'", field)
+	return "", ErrNoSuchCell
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -85,33 +91,61 @@ func newTransaction(row Row) *transaction {
 	// log.Printf("cellIndexByName: %#v", cellIndexByName)
 
 	if len(row) != len(cellIndexByName) {
-		log.Fatal("Unexpected row length")
-	}
-
-	stringAmount := getCell(row, "amount")
-	stringAmount = strings.Replace(stringAmount, ",", "", -1)
-	amount, err := strconv.ParseFloat(stringAmount, 64)
-	if err != nil {
-		log.Fatal("Non-numeric value encountered ", stringAmount)
+		log.Panic("Unexpected row length")
 	}
 
 	var outflow, inflow string
-	if amount > 0 {
-		outflow = fmt.Sprintf("%v", amount)
+
+	stringAmount, err := getCell(row, "amount")
+	if err == ErrNoSuchCell {
+		// We have separate inflow and outflow cells
+		inflow, err = getCell(row, "inflow")
+		if err != nil {
+			log.Panic(err)
+		}
+		outflow, err = getCell(row, "outflow")
+		if err != nil {
+			log.Panic(err)
+		}
+	} else if err != nil {
+		log.Panic(err)
 	} else {
-		inflow = fmt.Sprintf("%v", -amount)
+		// We have a unified amount cell and need to split it into inflow and outflow
+		stringAmount = strings.Replace(stringAmount, ",", "", -1)
+		amount, err := strconv.ParseFloat(stringAmount, 64)
+		if err != nil {
+			log.Panic("Non-numeric value encountered ", stringAmount)
+		}
+
+		if amount > 0 {
+			outflow = fmt.Sprintf("%v", amount)
+		} else {
+			inflow = fmt.Sprintf("%v", -amount)
+		}
 	}
 
-	stringDate := getCell(row, "date")
+	stringDate, err := getCell(row, "date")
+	if err != nil {
+		log.Panic(err)
+	}
 	date, err := parseDate(stringDate)
 	if err != nil {
-		log.Fatal("Invalid date encountered ", stringDate)
+		log.Panicf("Invalid date encountered ", stringDate)
+	}
+
+	payee, err := getCell(row, "payee")
+	if err != nil {
+		log.Panic(err)
+	}
+	memo, err := getCell(row, "memo")
+	if err != nil {
+		log.Panic(err)
 	}
 
 	return &transaction{
 		date:    date,
-		payee:   getCell(row, "payee"),
-		memo:    getCell(row, "memo"),
+		payee:   payee,
+		memo:    memo,
 		outflow: outflow,
 		inflow:  inflow,
 	}
@@ -183,7 +217,7 @@ func exportRows(rows []Row, out io.Writer) error {
 	w.Flush()
 
 	if err := w.Error(); err != nil {
-		log.Fatal(err)
+		log.Panic(err)
 	}
 
 	return nil
@@ -191,10 +225,14 @@ func exportRows(rows []Row, out io.Writer) error {
 
 func decodeFile(filename string) (rows []Row, err error) {
 	decoders := []func(io.Reader) ([]Row, error){
+		// Credit cards
 		decodeRowsXml,
 		decodeRowsHtmlCal,
-		decodeRowsHtmlMizrahi,
+		decodeRowsHtmlMizrahiCC,
 		decodeRowsHtmlIsracard,
+
+		// Checking accounts
+		decodeRowsHtmlMizrahiChecking,
 	}
 
 	for _, decode := range decoders {
@@ -229,6 +267,11 @@ func decodeAll() error {
 	for _, fi := range fileInfos {
 		filename := fi.Name()
 
+		// Skip Mac folder attributes
+		if filename == ".DS_Store" {
+			continue
+		}
+
 		inFilename := filepath.Join(inputDir, filename)
 		outFilename := filepath.Join(outputDir, fmt.Sprintf("%v.%v", basename(filename), "csv"))
 
@@ -255,6 +298,6 @@ func decodeAll() error {
 func main() {
 	err := decodeAll()
 	if err != nil {
-		log.Fatal(err)
+		log.Panic(err)
 	}
 }
