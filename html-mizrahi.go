@@ -34,6 +34,7 @@ func decodeRowsHtmlMizrahiCC(r io.Reader) (rows []Row, err error) {
 		var row Row
 		s.Find("td").Each(func(i int, s *goquery.Selection) {
 			value := strings.TrimSpace(s.Text())
+			value = strings.TrimPrefix(value, "\u200f")
 
 			if isHeader {
 				if value == "" {
@@ -41,6 +42,7 @@ func decodeRowsHtmlMizrahiCC(r io.Reader) (rows []Row, err error) {
 				}
 			}
 			// log.Printf("Field: %v [%v]", value, i)
+
 			row = append(row, value)
 		})
 
@@ -52,7 +54,9 @@ func decodeRowsHtmlMizrahiCC(r io.Reader) (rows []Row, err error) {
 			done = true
 		}
 
-		row[1] = strings.TrimPrefix(row[1], "\u200f")
+		if row[3] == "לידיעה בלבד" {
+			return
+		}
 
 		if !done {
 			log.Printf("%#v", row)
@@ -92,6 +96,7 @@ func decodeRowsHtmlMizrahiChecking(r io.Reader) (rows []Row, err error) {
 		var row Row
 		s.Find("td").Each(func(i int, s *goquery.Selection) {
 			value := strings.TrimSpace(s.Text())
+			value = strings.TrimPrefix(value, "\u200f")
 
 			if isHeader {
 				if value == "" {
@@ -105,8 +110,6 @@ func decodeRowsHtmlMizrahiChecking(r io.Reader) (rows []Row, err error) {
 		if row[0] == "" {
 			done = true
 		}
-
-		row[1] = strings.TrimPrefix(row[1], "\u200f")
 
 		if !done {
 			log.Printf("%#v", row)

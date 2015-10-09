@@ -19,7 +19,7 @@ var fieldNames = map[string][]string{
 	"inflow":  {"זכות"},
 	"outflow": {"חובה"},
 	"date":    {"תאריך עסקה", "תאריךהעסקה", "תאריך הקנייה", "תאריך רכישה", "תאריך"},
-	"payee":   {"שם בית העסק", "שםבית העסק", "שם בית עסק", "סוג תנועה"},
+	"payee":   {"שם בית העסק", "שםבית העסק", "שם בית עסק", "סוג תנועה", "תיאור"},
 	"memo":    {"הערות", "פירוט נוסף", "מידע נוסף", "פרוט נוסף", "אסמכתא"},
 }
 
@@ -233,6 +233,7 @@ func decodeFile(filename string) (rows []Row, err error) {
 
 		// Checking accounts
 		decodeRowsHtmlMizrahiChecking,
+		decodeRowsLeumiChecking,
 	}
 
 	for _, decode := range decoders {

@@ -6,10 +6,9 @@ import (
 	"log"
 	"strings"
 
+	"github.com/PuerkitoBio/goquery"
 	"golang.org/x/text/encoding/charmap"
 	"golang.org/x/text/transform"
-
-	"github.com/PuerkitoBio/goquery"
 )
 
 func decodeRowsHtmlIsracard(r io.Reader) (rows []Row, err error) {
@@ -43,6 +42,15 @@ func decodeRowsHtmlIsracard(r io.Reader) (rows []Row, err error) {
 			// log.Printf("Field: %v [%v]", value, i)
 			row = append(row, value)
 		})
+
+		if len(row) < 2 {
+			if !done {
+				log.Println("Heuristic: wrong file format, giving up")
+				rows = nil
+				done = true
+			}
+			return
+		}
 
 		if row[0] == "" {
 			row[0] = "1970-01-01"
