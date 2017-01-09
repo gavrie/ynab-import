@@ -15,12 +15,12 @@ import (
 )
 
 var fieldNames = map[string][]string{
-	"amount":  {"סכום חיוב ₪", "סכוםהחיוב", "סכום החיוב בש''ח", "סכום לחיוב"},
+	"amount":  {"סכום חיוב ₪", "סכוםהחיוב", "סכום החיוב בש''ח", "סכום לחיוב", "סכום החיוב"},
 	"inflow":  {"זכות"},
 	"outflow": {"חובה"},
-	"date":    {"תאריך עסקה", "תאריךהעסקה", "תאריך הקנייה", "תאריך רכישה", "תאריך"},
+	"date":    {"תאריך עסקה", "תאריךהעסקה", "תאריך הקנייה", "תאריך רכישה", "תאריך", "תאריך העסקה"},
 	"payee":   {"שם בית העסק", "שםבית העסק", "שם בית עסק", "סוג תנועה", "תיאור"},
-	"memo":    {"הערות", "פירוט נוסף", "מידע נוסף", "פרוט נוסף", "אסמכתא"},
+	"memo":    {"הערות", "פירוט נוסף", "מידע נוסף", "פרוט נוסף", "אסמכתא", "פרטים"},
 }
 
 var dateFormats = []string{
@@ -72,7 +72,7 @@ func getCell(row Row, field string) (string, error) {
 			return row[i], nil
 		}
 	}
-	// log.Printf("No cell found matching field '%v'", field)
+	log.Printf("No cell found matching field '%v'", field)
 	return "", ErrNoSuchCell
 }
 
@@ -88,8 +88,7 @@ type transaction struct {
 }
 
 func newTransaction(row Row) *transaction {
-	// log.Printf("cellIndexByName: %#v", cellIndexByName)
-
+	log.Printf("cellIndexByName: %#v", cellIndexByName)
 	if len(row) != len(cellIndexByName) {
 		log.Panic("Unexpected row length")
 	}
@@ -139,7 +138,8 @@ func newTransaction(row Row) *transaction {
 	}
 	memo, err := getCell(row, "memo")
 	if err != nil {
-		log.Panic(err)
+		memo = ""
+		log.Print(err)
 	}
 
 	return &transaction{
@@ -234,6 +234,7 @@ func decodeFile(filename string) (rows []Row, err error) {
 		// Checking accounts
 		decodeRowsHtmlMizrahiChecking,
 		decodeRowsLeumiChecking,
+		decodeRowsLeumicard,
 	}
 
 	for _, decode := range decoders {

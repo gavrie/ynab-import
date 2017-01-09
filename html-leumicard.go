@@ -9,15 +9,15 @@ import (
 	"github.com/PuerkitoBio/goquery"
 )
 
-func decodeRowsLeumiChecking(r io.Reader) (rows []Row, err error) {
-	log.Print("leumi-checking")
+func decodeRowsLeumicard(r io.Reader) (rows []Row, err error) {
+	log.Print("leumicard")
 
 	doc, err := goquery.NewDocumentFromReader(r)
 	if err != nil {
 		return nil, err
 	}
 
-	doc.Find("#ctlActivityTable").Each(func(i int, s *goquery.Selection) {
+	doc.Find("#ctlRegularTransactions").Each(func(i int, s *goquery.Selection) {
 		s.Find("tr.header").Each(func(i int, s *goquery.Selection) {
 			var row Row
 			s.Find("th").Each(func(i int, s *goquery.Selection) {
