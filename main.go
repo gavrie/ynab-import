@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"path"
 )
 
 var fieldNames = map[string][]string{
@@ -72,6 +73,7 @@ func getCell(row Row, field string) (string, error) {
 			return row[i], nil
 		}
 	}
+	log.Printf("%v", cellIndexByName)
 	log.Printf("No cell found matching field '%v'", field)
 	return "", ErrNoSuchCell
 }
@@ -88,10 +90,11 @@ type transaction struct {
 }
 
 func newTransaction(row Row) *transaction {
-	log.Printf("cellIndexByName: %#v", cellIndexByName)
-	if len(row) != len(cellIndexByName) {
-		log.Panic("Unexpected row length")
-	}
+	//log.Printf("cellIndexByName: %#v", cellIndexByName)
+	//log.Printf("row: %#v", row)
+	//if len(row) != len(cellIndexByName) {
+	//	log.Panic("Unexpected row length")
+	//}
 
 	var outflow, inflow string
 
@@ -100,6 +103,7 @@ func newTransaction(row Row) *transaction {
 		// We have separate inflow and outflow cells
 		inflow, err = getCell(row, "inflow")
 		if err != nil {
+			log.Printf("%v",row)
 			log.Panic(err)
 		}
 		outflow, err = getCell(row, "outflow")
@@ -257,9 +261,9 @@ func basename(filename string) string {
 	return filename[:len(filename)-len(filepath.Ext(filename))]
 }
 
-func decodeAll() error {
-	inputDir := "data/input"
-	outputDir := "data/output"
+func decodeAll(datapath string) error {
+	inputDir := path.Join(datapath, "input")
+	outputDir := path.Join(datapath, "output")
 
 	fileInfos, err := ioutil.ReadDir(inputDir)
 	if err != nil {
@@ -288,6 +292,7 @@ func decodeAll() error {
 		if err != nil {
 			return err
 		}
+
 		err = exportRows(rows, outFile)
 		if err != nil {
 			return err
@@ -298,7 +303,9 @@ func decodeAll() error {
 }
 
 func main() {
-	err := decodeAll()
+	filePath := os.Args[1]
+
+	err := decodeAll(filePath)
 	if err != nil {
 		log.Panic(err)
 	}

@@ -32,7 +32,7 @@ func decodeRowsLeumiChecking(r io.Reader) (rows []Row, err error) {
 			rows = append(rows, row)
 		})
 
-		s.Find("tr.alternatingItem").Each(func(i int, s *goquery.Selection) {
+		s.Find("tbody").Find("tr").Each(func(i int, s *goquery.Selection) {
 			done := false
 
 			var row Row
