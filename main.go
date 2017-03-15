@@ -32,8 +32,9 @@ var dateFormats = []string{
 }
 
 func parseDate(s string) (date time.Time, err error) {
+	s1 := strings.Replace(s, "*", "", -1)
 	for _, f := range dateFormats {
-		date, err = time.Parse(f, s)
+		date, err = time.Parse(f, s1)
 		if err == nil {
 			return date, nil
 			break
