@@ -1,0 +1,8 @@
+package: .
+import:
+- package: github.com/PuerkitoBio/goquery
+  version: ^1.1.0
+- package: golang.org/x/text
+  subpackages:
+  - encoding/charmap
+  - transform

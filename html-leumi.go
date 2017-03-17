@@ -28,11 +28,11 @@ func decodeRowsLeumiChecking(r io.Reader) (rows []Row, err error) {
 				log.Printf("Field: '%v' [%v]", value, i)
 				row = append(row, value)
 			})
-			// log.Print(row)
+			log.Print(row)
 			rows = append(rows, row)
 		})
 
-		s.Find("tr.printItem").Each(func(i int, s *goquery.Selection) {
+		s.Find("tbody").Find("tr").Each(func(i int, s *goquery.Selection) {
 			done := false
 
 			var row Row
@@ -43,7 +43,7 @@ func decodeRowsLeumiChecking(r io.Reader) (rows []Row, err error) {
 				value := strings.TrimSpace(s.Text())
 				row = append(row, value)
 			})
-			if !done {
+			if !done && row != nil {
 				log.Printf("%#v", row)
 				rows = append(rows, row)
 			}
